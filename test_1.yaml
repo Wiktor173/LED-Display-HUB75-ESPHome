@@ -1,0 +1,124 @@
+esphome:
+  name: test_led_display
+  platform: ESP32
+  board: esp32dev
+  arduino_version: recommended
+  platformio_options:
+    upload_speed: 921600
+    monitor_speed: 115200
+  includes:
+    - LED-Display-HUB75.h
+    - LED-Display-HUB75.cpp
+    - esp32_i2s_parallel_v2.h
+    - esp32_i2s_parallel_v2.c
+  on_boot:
+    priority: -10
+    then: # stop the flickering
+      - lambda: |-
+          static auto display = (MatrixPanel_I2S_DMA *) (const_cast<custom_component::CustomComponentConstructor*>(&id(matrix)))->get_component(0);
+          display->fillScreenRGB888(0, 0, 255);
+          delay(1000);
+          display->fillScreenRGB888(0, 0, 0);
+
+
+wifi:
+  ssid: "Keenetic-7944"
+  password: "12345678"
+  
+
+display:
+
+font:
+  - id: digits
+    # 3x5 pixel font: https://www.dafont.com/de/pixelzim3x5.font
+    file: "fonts/pzim3x5.ttf"
+    size: 9
+
+switch:
+  - platform: restart
+    name: "Restart"
+    id: restart_test
+    
+  - platform: template
+    name: test1_on
+    id: test1_on
+    turn_on_action:
+          lambda: |-
+            static auto display = (MatrixPanel_I2S_DMA *) (const_cast<custom_component::CustomComponentConstructor*>(&id(matrix)))->get_component(0);
+            static auto pos = 0;
+            static auto halfheight = display->get_height_internal() / 2;
+            static auto halfwidth = 0;
+            auto text = "This is just a test";
+            static auto font = id(digits);
+            static int width;
+            static int x_offset;
+            static int baseline;
+            static int height;
+            font->measure(text, &width, &x_offset, &baseline, &height);
+            uint32_t color = 2555;
+            for (pos = 0; pos < display->get_width_internal() + width; pos++){
+                display->fillScreenRGB888(0, 0, 0);
+                display->print(display->get_width_internal() - pos, halfheight, font, color, TextAlign::CENTER_LEFT, text);
+                delay(20);
+                }
+            
+            
+  - platform: template
+    name: test2_on
+    id: test2_on
+    turn_on_action:
+          lambda: |-
+            static auto display = (MatrixPanel_I2S_DMA *) (const_cast<custom_component::CustomComponentConstructor*>(&id(matrix)))->get_component(0);
+            static auto halfheight = 30;
+            static auto halfwidth = 0;
+            auto text = "This test 2";
+            static auto font = id(digits);
+            static int width;
+            static int x_offset;
+            static int baseline;
+            static int height;
+            font->measure(text, &width, &x_offset, &baseline, &height);
+            display->print(halfwidth, halfheight, font, TextAlign::CENTER_LEFT, text);
+            
+
+
+custom_component:
+  - id: matrix
+    lambda: |-
+      MatrixPanel_I2S_DMA *matrix = nullptr;
+      HUB75_I2S_CFG mxconfig(64,32,1);
+      mxconfig.driver = HUB75_I2S_CFG::SHIFTREG;
+      matrix = new MatrixPanel_I2S_DMA(mxconfig);
+      matrix->begin();
+      matrix->setBrightness8(32);
+      return {matrix};      
+
+
+
+            
+# Enable fallback hotspot (captive portal) in case wifi connection fails
+#  ap:
+#    ssid: "Ir Aero 1 Fallback Hotspot"
+#    password: "8LNOvRtukJdD"
+
+#captive_portal:
+
+# Enable logging
+logger:
+#  level: DEBUG
+#  logs:
+#    sensor: INFO
+#    adc: INFO
+#  level: VERY_VERBOSE
+
+# Enable Home Assistant API
+api:
+  password: "1234"
+
+ota:
+  password: "1234"
+ 
+web_server:
+  port: 80  
+
+
